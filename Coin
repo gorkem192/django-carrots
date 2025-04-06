@@ -1,0 +1,48 @@
+import ccxt
+import time
+
+# Binance API bilgilerini buraya gir
+api_key = 'YOUR_API_KEY'
+api_secret = 'YOUR_API_SECRET'
+
+exchange = ccxt.binance({
+    'apiKey': api_key,
+    'secret': api_secret,
+    'enableRateLimit': True
+})
+
+symbol = 'DYDX/TRY'
+amount = 1  # 1 DYDX örnek olarak alınıyor
+state = 'buy'
+buy_price = None
+
+while True:
+    try:
+        ticker = exchange.fetch_ticker(symbol)
+        last_price = ticker['last']
+        print(f"Güncel fiyat: {last_price} TRY")
+
+        if state == 'buy':
+            order = exchange.create_market_buy_order(symbol, amount)
+            buy_price = last_price
+            print(f"{buy_price} TRY'den ALIM yapıldı.")
+            state = 'wait_to_sell'
+
+        elif state == 'wait_to_sell':
+            if last_price >= buy_price + 0.05:
+                order = exchange.create_market_sell_order(symbol, amount)
+                print(f"{last_price} TRY'den SATIŞ yapıldı.")
+                state = 'wait_to_buy_again'
+
+        elif state == 'wait_to_buy_again':
+            if last_price <= buy_price + 0.02:  # 5 kuruş çıkıp 3 kuruş düşerse = +0.02 net
+                order = exchange.create_market_buy_order(symbol, amount)
+                buy_price = last_price
+                print(f"{buy_price} TRY'den YENİDEN ALIM yapıldı.")
+                state = 'wait_to_sell'
+
+        time.sleep(5)
+
+    except Exception as e:
+        print("Hata:", str(e))
+        time.sleep(10)
